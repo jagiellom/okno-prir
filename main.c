@@ -20,16 +20,24 @@ double firefly_brightness(double f_x) {
   return 1 / (1 + f_x);
 } // szukamy minimum, wiec jasnosc wieksza, im mniejsza wartosc funkcji
 
-void move(double *a, double *b) {
-  // odleglosc
+void move(double *a, double *b, double alpha) {
   double sum = 0.0;
   for (int i = 0; i < N; i++) {
     double d = a[i] - b[i];
     sum += d * d;
   }
   double distance = sqrt(sum);
-
   double beta = BETA0 * exp(-GAMMA * distance * distance);
+  for (int n = 0; n < N; n++) {
+    a[n] += beta * (b[n] - a[n]) + alpha * (drand() - 0.5);
+
+    if (a[n] < MINVAL) {
+      a[n] = MINVAL;
+    }
+    if (a[n] > MAXVAL) {
+      a[n] = MAXVAL;
+    }
+  }
 }
 
 double quadratic(double *x, int n) {
@@ -40,9 +48,20 @@ double quadratic(double *x, int n) {
   return sum;
 }
 
-int main() {
-  srand(time(NULL));
+double arrowhead(double *x, int n) {
+  double sum = 0.0;
+  double xn2 = x[n - 1] * x[n - 1];
 
+  for (int i = 0; i < n - 1; i++) {
+    double xi2 = x[i] * x[i];
+    double sum2 = (xi2 + xn2);
+    sum += sum2 * sum2 - 4.0 * x[i] + 3.0;
+  }
+
+  return sum;
+}
+
+void firefly(double (*fun)(double *, int)) {
   double fireflies[FIREFLY_COUNT][N];
   double brightness[FIREFLY_COUNT];
 
@@ -51,54 +70,66 @@ int main() {
     for (int k = 0; k < N; k++) {
       fireflies[i][k] = MINVAL + (MAXVAL - MINVAL) * drand();
     }
-    brightness[i] = firefly_brightness(quadratic(fireflies[i], N));
+    brightness[i] = firefly_brightness(fun(fireflies[i], N));
   }
 
   clock_t t_start = clock();
 
   for (int iter = 0; iter < MAX_ITER; iter++) {
+    double alpha = ALPHA * (1.0 - (double)iter / MAX_ITER);
     for (int i = 0; i < FIREFLY_COUNT; i++) {
+      double new_pos[N];
+      for (int n = 0; n < N; n++) {
+        new_pos[n] = fireflies[i][n];
+      }
+      double current = brightness[i];
       for (int j = 0; j < FIREFLY_COUNT; j++) {
-        if (brightness[j] < brightness[i]) {
-          double pos[N];
-          double r = distance(fireflies[i], fireflies[j], N);
-          double new_beta = BETA0 * exp(-GAMMA * r * r);
-
-          for (int n = 0; n < N; n++) {
-            fireflies[i][n] = new_beta * (fireflies[j][n] - fireflies[i][n]) +
-                              ALPHA * (drand() - 0.5);
-          }
+        if (brightness[j] > current) {
+          move(new_pos, fireflies[j], alpha);
         }
       }
-      brightness[i] = quadratic(fireflies[i], N);
+      for (int n = 0; n < N; n++) {
+        fireflies[i][n] = new_pos[n];
+      }
+      brightness[i] = firefly_brightness(fun(fireflies[i], N));
     }
     // co 200 iteracji wypisz wynik
     if (iter % 200 == 0) {
       int best = 0;
       for (int i = 0; i < FIREFLY_COUNT; i++) {
-        if (brightness[i] < brightness[best])
+        if (brightness[i] > brightness[best]) {
           best = i;
-        printf("iter %4d | best f(x) = %.6e\n", iter, brightness[best]);
+        }
       }
+      double f_x = fun(fireflies[best], N);
+      printf("iter %4d | max brightness = %.6e | min f(x) = %.10e\n", iter,
+             brightness[best], f_x);
     }
   }
 
   clock_t t_end = clock();
 
   int best = 0;
-  for (int i = 0; i < FIREFLY_COUNT; i++)
-    if (brightness[i] < brightness[best])
+  for (int i = 0; i < FIREFLY_COUNT; i++) {
+    if (brightness[i] > brightness[best]) {
       best = i;
+    }
+  }
+
+  double f_x = fun(fireflies[best], N);
   printf("\n ~~~~~~~~WYNIK~~~~~~~~ \n");
-  printf("Best f(x) = %.10e\n", brightness[best]);
-  // printf("x = ");
-  // for (int n = 0; n < N; n++) {
-  //   printf("%.6f ", fireflies[best][n]);
-  // }
-  // printf("\n");
+  printf("Max(Brightness) = %.10e\n", brightness[best]);
+  printf("Min(f(x)) = %.10e\n", f_x);
   double time_sec = (double)(t_end - t_start) / CLOCKS_PER_SEC;
   printf("Czas sekwencyjny: %.2f s\n", time_sec);
-  return 0;
+}
 
+int main() {
+  srand(time(NULL));
+
+  printf("\n ~~~~~~~~QUADRATIC~~~~~~~~ \n");
+  firefly(quadratic);
+  printf("\n ~~~~~~~~ARROWHEAD~~~~~~~~ \n");
+  firefly(arrowhead);
   return 0;
 }
