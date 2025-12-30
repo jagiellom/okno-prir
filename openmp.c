@@ -14,11 +14,7 @@
 #define MINVAL -2.0
 #define MAXVAL 2.0
 
-/* ===================== RNG ===================== */
-
 double drand_r(unsigned int *seed) { return (double)rand_r(seed) / RAND_MAX; }
-
-/* ===================== NORM ===================== */
 
 double norm2(double *x, int n) {
   double sum = 0.0;
@@ -26,8 +22,6 @@ double norm2(double *x, int n) {
     sum += x[i] * x[i];
   return sqrt(sum);
 }
-
-/* ===================== FA CORE ===================== */
 
 double firefly_brightness(double f_x) { return 1.0 / (1.0 + f_x); }
 
@@ -51,8 +45,6 @@ void move(double *a, double *b, double alpha, unsigned int *seed) {
   }
 }
 
-/* ===================== TEST FUNCTIONS ===================== */
-
 double quadratic(double *x, int n) {
   double sum = 0.0;
   for (int i = 2; i < n; i++)
@@ -72,14 +64,11 @@ double arrowhead(double *x, int n) {
   return sum;
 }
 
-/* ===================== FIREFLY ALGORITHM ===================== */
-
 void firefly(double (*fun)(double *, int)) {
 
   static double fireflies[FIREFLY_COUNT][N];
   static double brightness[FIREFLY_COUNT];
 
-  /* initialization */
   for (int i = 0; i < FIREFLY_COUNT; i++) {
     unsigned int seed = 1234 + i;
     for (int k = 0; k < N; k++)
