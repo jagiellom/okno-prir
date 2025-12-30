@@ -14,13 +14,20 @@
 #define MINVAL -2.0
 #define MAXVAL 2.0
 
-double drand() { return ((double)rand() / RAND_MAX); } // 0.0-1.0
+double drand() { return ((double)rand() / RAND_MAX); }
 
-double firefly_brightness(double f_x) {
-  return 1 / (1 + f_x);
-} // szukamy minimum, wiec jasnosc wieksza, im mniejsza wartosc funkcji
+double norm2(double *x, int n) {
+  double sum = 0.0;
+  for (int i = 0; i < n; i++) {
+    sum += x[i] * x[i];
+  }
+  return sqrt(sum);
+}
+
+double firefly_brightness(double f_x) { return 1 / (1 + f_x); }
 
 void move(double *a, double *b, double alpha) {
+
   double sum = 0.0;
   for (int i = 0; i < N; i++) {
     double d = a[i] - b[i];
@@ -65,10 +72,10 @@ void firefly(double (*fun)(double *, int)) {
   double fireflies[FIREFLY_COUNT][N];
   double brightness[FIREFLY_COUNT];
 
-  // losowe wartosci na poczatku i wyliczenie jasnosci
   for (int i = 0; i < FIREFLY_COUNT; i++) {
+
     for (int k = 0; k < N; k++) {
-      fireflies[i][k] = MINVAL + (MAXVAL - MINVAL) * drand();
+      fireflies[i][k] = MINVAL + (MAXVAL - MINVAL) * drand(&seed);
     }
     brightness[i] = firefly_brightness(fun(fireflies[i], N));
   }
@@ -93,7 +100,6 @@ void firefly(double (*fun)(double *, int)) {
       }
       brightness[i] = firefly_brightness(fun(fireflies[i], N));
     }
-    // co 200 iteracji wypisz wynik
     if (iter % 200 == 0) {
       int best = 0;
       for (int i = 0; i < FIREFLY_COUNT; i++) {
@@ -102,8 +108,10 @@ void firefly(double (*fun)(double *, int)) {
         }
       }
       double f_x = fun(fireflies[best], N);
-      printf("iter %4d | max brightness = %.6e | min f(x) = %.10e\n", iter,
-             brightness[best], f_x);
+      double x_norm = norm2(fireflies[best], N);
+      printf("iter %4d | max brightness = %.6e | min f(x) = %.10e | ||x||_2 = "
+             "%.10e\n",
+             iter, brightness[best], f_x, x_norm);
     }
   }
 
@@ -117,9 +125,11 @@ void firefly(double (*fun)(double *, int)) {
   }
 
   double f_x = fun(fireflies[best], N);
+  double x_norm = norm2(fireflies[best], N);
   printf("\n ~~~~~~~~WYNIK~~~~~~~~ \n");
   printf("Max(Brightness) = %.10e\n", brightness[best]);
   printf("Min(f(x)) = %.10e\n", f_x);
+  printf("||x||_2 = %.10e\n", x_norm);
   double time_sec = (double)(t_end - t_start) / CLOCKS_PER_SEC;
   printf("Czas sekwencyjny: %.2f s\n", time_sec);
 }
