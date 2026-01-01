@@ -3,8 +3,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define FIREFLY_COUNT 200
-#define N 100
+#define FIREFLY_COUNT 300
+#define N 200
 #define MAX_ITER 4000
 
 #define ALPHA 0.2
@@ -14,7 +14,7 @@
 #define MINVAL -2.0
 #define MAXVAL 2.0
 
-double drand_r(unsigned int *seed) { return (double)rand_r(seed) / RAND_MAX; }
+double drand_r(uint *seed) { return (double)rand_r(seed) / RAND_MAX; }
 
 double norm2(double *x, int n) {
   double sum = 0.0;
@@ -76,9 +76,7 @@ void firefly(double (*fun)(double *, int)) {
     brightness[i] = firefly_brightness(fun(fireflies[i], N));
   }
 
-  double t_start = omp_get_wtime();
-
-  for (int iter = 0; iter < MAX_ITER; iter++) {
+  for (int iter = 1; iter <= MAX_ITER; iter++) {
     double alpha = ALPHA * (1.0 - (double)iter / MAX_ITER);
 
 #pragma omp parallel
@@ -110,15 +108,16 @@ void firefly(double (*fun)(double *, int)) {
     if (iter % 200 == 0) {
       int best = 0;
       for (int i = 1; i < FIREFLY_COUNT; i++)
-        if (brightness[i] > brightness[best])
+        if (brightness[i] > brightness[best]) {
           best = i;
-
-      printf("iter %4d | min f(x) = %.6e | ||x||_2 = %.6e\n", iter,
-             fun(fireflies[best], N), norm2(fireflies[best], N));
+        }
+      double f_x = fun(fireflies[best], N);
+      double x_norm = norm2(fireflies[best], N);
+      printf("iter %4d | max brightness = %.6e | min f(x) = %.10e | ||x||_2 = "
+             "%.10e\n",
+             iter, brightness[best], f_x, x_norm);
     }
   }
-
-  double t_end = omp_get_wtime();
 
   int best = 0;
   for (int i = 1; i < FIREFLY_COUNT; i++)
@@ -127,11 +126,9 @@ void firefly(double (*fun)(double *, int)) {
 
   printf("\n===== WYNIK =====\n");
   printf("Min f(x) = %.10e\n", fun(fireflies[best], N));
+  printf("Max(Brightness) = %.10e\n", brightness[best]);
   printf("||x||_2  = %.10e\n", norm2(fireflies[best], N));
-  printf("Czas OpenMP = %.3f s\n\n", t_end - t_start);
 }
-
-/* ===================== MAIN ===================== */
 
 int main() {
 

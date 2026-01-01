@@ -1,10 +1,9 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
 
-#define FIREFLY_COUNT 200
-#define N 100
+#define FIREFLY_COUNT 300
+#define N 200
 #define MAX_ITER 4000
 
 #define ALPHA 0.2
@@ -14,7 +13,7 @@
 #define MINVAL -2.0
 #define MAXVAL 2.0
 
-double drand() { return ((double)rand() / RAND_MAX); }
+double drand(uint *seed) { return ((double)rand_r(seed) / RAND_MAX); }
 
 double norm2(double *x, int n) {
   double sum = 0.0;
@@ -26,7 +25,7 @@ double norm2(double *x, int n) {
 
 double firefly_brightness(double f_x) { return 1 / (1 + f_x); }
 
-void move(double *a, double *b, double alpha) {
+void move(double *a, double *b, double alpha, unsigned int *seed) {
 
   double sum = 0.0;
   for (int i = 0; i < N; i++) {
@@ -36,7 +35,7 @@ void move(double *a, double *b, double alpha) {
   double distance = sqrt(sum);
   double beta = BETA0 * exp(-GAMMA * distance * distance);
   for (int n = 0; n < N; n++) {
-    a[n] += beta * (b[n] - a[n]) + alpha * (drand() - 0.5);
+    a[n] += beta * (b[n] - a[n]) + alpha * (drand(seed) - 0.5);
 
     if (a[n] < MINVAL) {
       a[n] = MINVAL;
@@ -73,17 +72,16 @@ void firefly(double (*fun)(double *, int)) {
   double brightness[FIREFLY_COUNT];
 
   for (int i = 0; i < FIREFLY_COUNT; i++) {
-
+    unsigned int seed = 1234 + i;
     for (int k = 0; k < N; k++) {
       fireflies[i][k] = MINVAL + (MAXVAL - MINVAL) * drand(&seed);
     }
     brightness[i] = firefly_brightness(fun(fireflies[i], N));
   }
 
-  clock_t t_start = clock();
-
-  for (int iter = 0; iter < MAX_ITER; iter++) {
+  for (int iter = 1; iter <= MAX_ITER; iter++) {
     double alpha = ALPHA * (1.0 - (double)iter / MAX_ITER);
+    unsigned int seed = 4321;
     for (int i = 0; i < FIREFLY_COUNT; i++) {
       double new_pos[N];
       for (int n = 0; n < N; n++) {
@@ -92,7 +90,7 @@ void firefly(double (*fun)(double *, int)) {
       double current = brightness[i];
       for (int j = 0; j < FIREFLY_COUNT; j++) {
         if (brightness[j] > current) {
-          move(new_pos, fireflies[j], alpha);
+          move(new_pos, fireflies[j], alpha, &seed);
         }
       }
       for (int n = 0; n < N; n++) {
@@ -115,8 +113,6 @@ void firefly(double (*fun)(double *, int)) {
     }
   }
 
-  clock_t t_end = clock();
-
   int best = 0;
   for (int i = 0; i < FIREFLY_COUNT; i++) {
     if (brightness[i] > brightness[best]) {
@@ -130,13 +126,9 @@ void firefly(double (*fun)(double *, int)) {
   printf("Max(Brightness) = %.10e\n", brightness[best]);
   printf("Min(f(x)) = %.10e\n", f_x);
   printf("||x||_2 = %.10e\n", x_norm);
-  double time_sec = (double)(t_end - t_start) / CLOCKS_PER_SEC;
-  printf("Czas sekwencyjny: %.2f s\n", time_sec);
 }
 
 int main() {
-  srand(time(NULL));
-
   printf("\n ~~~~~~~~QUADRATIC~~~~~~~~ \n");
   firefly(quadratic);
   printf("\n ~~~~~~~~ARROWHEAD~~~~~~~~ \n");
